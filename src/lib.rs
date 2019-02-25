@@ -1,5 +1,8 @@
 #[macro_use] extern crate failure;
 extern crate chrono;
 
-mod models;
+pub mod models;
 pub mod file_io;
+pub mod dbscan_sd;
+
+mod dbscan_utility;
