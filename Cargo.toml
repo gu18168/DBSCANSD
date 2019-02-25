@@ -1,0 +1,13 @@
+[package]
+name = "dbscansd"
+version = "0.1.0"
+authors = ["gu18168 <gu18168@gmail.com>"]
+edition = "2018"
+
+[[bin]]
+name = "dbscansd"
+path = "src/main.rs"
+
+[dependencies]
+failure = "0.1.5"
+chrono = "0.4.6"
