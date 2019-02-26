@@ -8,31 +8,25 @@ use crate::{
 };
 use failure::{Error};
 use chrono::prelude::*;
+use csv::Reader;
 
-pub fn read_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPoint>, Error> {
-  let file = File::open(path)?;
-  let file = BufReader::new(file);
+pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPoint>, Error> {
+  let mut rdr = Reader::from_path(path)?;
 
   let mut trajectory_points: Vec<TrajectoryPoint> = Vec::new();
 
-  for line in file.lines().filter_map(|result| result.ok()) {
-    // split return Split
-    // Split 实现了 Iterator trait
-    let mut scanner = line.split(',');
-    let is_first_line = scanner.next().unwrap();
+  for record in rdr.records() {
+    // 默认已经跳过了第一行，所以无需我们再处理
+    let record = record.unwrap();
 
-    // 跳过 csv 文件的第一行
-    if is_first_line == "MMSI" { continue };
+    if record.get(0).unwrap() == "MMSI" { continue; }
 
-    let mmsi = is_first_line;
-    let timestamp = time_to_second(scanner.next().unwrap()).expect("Time format has error!");
-    let sog_raw = scanner.next().unwrap();
-    let longitude: f64 = scanner.next().unwrap().parse().expect("longitude isn't double!");
-    let latitude: f64 = scanner.next().unwrap().parse().expect("latitude isn't double!");
-    let cog_raw = scanner.next().unwrap();
-
-    let sog: f64 = if sog_raw == "None" { 0.0 } else { sog_raw.parse().expect("SOG isn't double!") };
-    let cog: f64 = if cog_raw == "None" { 0.0 } else { cog_raw.parse().expect("COG isn't double!") };
+    let mmsi = record.get(0).unwrap();
+    let timestamp = time_to_second(record.get(1).unwrap()).expect("Time format has error!");
+    let sog: f64 = record.get(2).unwrap().parse().expect("SOG isn't double!");
+    let longitude: f64 = record.get(3).unwrap().parse().expect("longitude isn't double!");
+    let latitude: f64 = record.get(4).unwrap().parse().expect("latitude isn't double!");
+    let cog: f64 = record.get(5).unwrap().parse().expect("COG isn't double!");
 
     // 暂停点但是速度太快 & 移动点但是速度太慢
     if !is_stop_point && sog <= 0.5 { continue };
