@@ -7,16 +7,12 @@ use std::borrow::Cow;
 /// * [Cow - Chinese](http://wiki.jikexueyuan.com/project/rust-primer/intoborrow/cow.html)
 /// * [Cow - English](https://doc.rust-lang.org/std/borrow/enum.Cow.html)
 pub struct Cluster<'a> {
-  avg_sog: f64,
-  avg_cog: f64,
   cluster: Cow<'a, Vec<TrajectoryPoint>>
 }
 
 impl<'a> Cluster<'a> {
   pub fn new(cluster: Vec<TrajectoryPoint>) -> Self {
     Self {
-      avg_sog: 0.0,
-      avg_cog: 0.0,
       cluster: Cow::Owned(cluster)
     }
   }
@@ -27,5 +23,15 @@ impl<'a> Cluster<'a> {
 
   pub fn get_mut_cluster(&mut self) -> &mut Vec<TrajectoryPoint> {
     self.cluster.to_mut()
+  }
+
+  pub fn cal_average_dir(&self) -> f64 {
+    let mut sum: f64 = 0.0;
+
+    for p in self.get_cluster() {
+      sum += p.get_cog();
+    }
+
+    sum / (self.cluster.len() as f64)
   }
 }

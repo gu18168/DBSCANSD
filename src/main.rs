@@ -2,10 +2,14 @@ extern crate dbscansd;
 
 use std::env;
 use dbscansd::{
-    file_io::readFile,
+    file_io::{read_file, write_cluster_to_file, write_gv_to_file},
+    dbscan_sd::apply_dbscansd,
     models::{
-        trajectory_point::TrajectoryPoint
-    }
+        trajectory_point::TrajectoryPoint,
+        cluster::Cluster,
+        gravity_vector::GravityVector
+    },
+    gv_extraction::extract_gv
 };
 
 /// # Should Know
@@ -55,6 +59,19 @@ fn execute_dbscansd(
     max_dir: f64,
     is_stop_point: bool)
 {
-    let points: Vec<TrajectoryPoint> = readFile(in_path, is_stop_point).expect("read error file");
+    let mut points: Vec<TrajectoryPoint> = read_file(in_path, is_stop_point).expect("read error file");
+    let clusters: Vec<Cluster> = apply_dbscansd(&mut points, eps, min_pts, max_spd, max_dir, is_stop_point);
+    let mut index = 0;
 
+    for cluster in clusters {
+        if is_stop_point {
+            write_cluster_to_file(out_path, &cluster.get_cluster(), index);
+        } else {
+            let ppl: Vec<GravityVector> = extract_gv(&cluster);
+            write_gv_to_file(out_path, &ppl, index);
+            // write_cluster_to_file(out_path, &cluster.get_cluster(), index);
+        }
+        
+        index += 1;
+    }
 }

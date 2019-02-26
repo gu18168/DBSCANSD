@@ -22,4 +22,24 @@ impl GravityVector {
       cog
     }
   }
+
+  pub fn get_longitude(&self) -> f64 {
+    self.longitude
+  }
+
+  pub fn get_latitude(&self) -> f64 {
+    self.latitude
+  }
+
+  pub fn get_sog(&self) -> f64 {
+    self.sog
+  }
+
+  pub fn get_cog(&self) -> f64 {
+    self.cog
+  }
+
+  pub fn get_median_distance(&self) -> f64 {
+    self.median_distance
+  }
 }
