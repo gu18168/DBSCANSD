@@ -15,11 +15,8 @@ pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPo
 
   let mut trajectory_points: Vec<TrajectoryPoint> = Vec::new();
 
-  for record in rdr.records() {
+  for record in rdr.records().filter_map(|result| result.ok()) {
     // 默认已经跳过了第一行，所以无需我们再处理
-    let record = record.unwrap();
-
-    if record.get(0).unwrap() == "MMSI" { continue; }
 
     let mmsi = record.get(0).unwrap();
     let timestamp = time_to_second(record.get(1).unwrap()).expect("Time format has error!");
