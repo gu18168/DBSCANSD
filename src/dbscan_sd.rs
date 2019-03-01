@@ -46,38 +46,42 @@ pub fn apply_dbscansd(
   }
 
   // 合并簇也比较慢，是否能优化
+  // 理论上也是可以多线程并行的，因为合并是最终结果，与顺序无关
+  // 由于会改变 real_result_clusters 性能提升并不是很大
   let mut real_result_clusters: Vec<Cluster> = Vec::new();
+
   for (ll, cluster) in result_clusters.iter().enumerate() {
     println!("merging cluster {}", ll);
-    let mut indexs: Vec<usize> = Vec::new();
 
-    // 记录所有可以合并的簇索引将它们一起合并
-    for (index, to_cluster) in real_result_clusters.iter().enumerate() {
-      if is_merge(cluster, to_cluster) {
-        indexs.push(index);
+    let iter_of_real_result = real_result_clusters.iter().enumerate();
+
+    real_result_clusters = pool.install(|| {
+      let mut indexs: Vec<usize> = Vec::new();
+      // 使用空间换时间
+      let mut clusters: Vec<Cluster> = Vec::new();
+
+      // 记录所有可以合并的簇索引将它们一起合并
+      for (index, to_cluster) in iter_of_real_result {
+        if is_merge(cluster, to_cluster) {
+          indexs.push(index);
+        } else {
+          clusters.push(
+            Cluster::new(to_cluster.get_cluster().clone())
+          );
+        }
       }
-    } 
 
-    // 先将目前这个加入到簇末尾
-    real_result_clusters.push(
-        Cluster::new(cluster.get_cluster().clone())
-    );
-
-    if indexs.len() == 0 {
-      // 没有能合并的，直接进入下一个循环
-      continue;
-    } else {
-      // 要把目前新加入的这个也合并进去
-      indexs.push(real_result_clusters.len() - 1);
-
-      let merged_cluster: Cluster = merge_clusters(&real_result_clusters, &indexs);
-      // 删除合并之前的簇，注意需要逆序来删除
-      for i in (0..indexs.len()).rev() {
-        real_result_clusters.remove(indexs[i]);
+      if indexs.len() > 0 {
+        let merged_cluster = merge_clusters(&real_result_clusters, &indexs, cluster);
+        clusters.push(merged_cluster);
+      } else {
+        clusters.push(
+          Cluster::new(cluster.get_cluster().clone())
+        );
       }
-      // 加入合并完的簇
-      real_result_clusters.push(merged_cluster);
-    }
+
+      clusters
+    });
   }
 
   real_result_clusters
@@ -100,7 +104,7 @@ fn is_merge(c1: &Cluster, c2: &Cluster) -> bool {
   false
 }
 
-fn merge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
+fn merge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>, key_cluster: &Cluster) -> Cluster {
   let mut points: Vec<TrajectoryPoint> = Vec::new();
 
   for index in indexs {
@@ -110,6 +114,13 @@ fn merge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
       if !points.contains(point) {
         points.push(point.clone());
       }
+    }
+  }
+
+  // 合并关键簇
+  for point in key_cluster.get_cluster() {
+    if !points.contains(point) {
+      points.push(point.clone());
     }
   }
 

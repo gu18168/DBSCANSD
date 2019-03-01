@@ -49,6 +49,8 @@ fn time_to_second(time: &str) -> Result<i64, Error> {
   Ok(date.timestamp())
 }
 
+// 存在一个问题，如果是多次写入就完蛋了
+// 但是如果直接覆盖，会使原功能失效
 pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<TrajectoryPoint>, index: i32) {
   let mut file = OpenOptions::new().append(true).create(true)
     .open(out_path).expect("File doesn't open and write");
