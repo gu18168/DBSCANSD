@@ -46,8 +46,6 @@ fn main() {
         println!("  args[7]: boolean value, if you would like to cluster stopping points (true) or moving points (false)");
         println!("e.g. cargo run input.csv output.csv 20000 0.03 50 2 2.5 false");
     }
-
-    // println!("{:?}", args);
 }
 
 fn execute_dbscansd(
@@ -60,6 +58,7 @@ fn execute_dbscansd(
     is_stop_point: bool)
 {
     let mut points: Vec<TrajectoryPoint> = read_csv_file(in_path, is_stop_point).expect("read error file");
+    // 传递结果比较慢，是否能优化
     let clusters: Vec<Cluster> = apply_dbscansd(&mut points, eps, min_pts, max_spd, max_dir, is_stop_point);
     let mut index = 0;
 

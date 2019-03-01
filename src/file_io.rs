@@ -1,5 +1,5 @@
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs::OpenOptions;
+use std::io::Write;
 use crate::{
   models::{
     trajectory_point::TrajectoryPoint,

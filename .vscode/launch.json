@@ -20,7 +20,7 @@
             "type": "cppvsdbg",
             "request": "launch",
             "program": "${workspaceFolder}/target/debug/dbscansd.exe",
-            "args": ["./data/toy_data.csv", "./data/output.csv", "0.03", "50", "2", "2.5", "true"],
+            "args": ["./data/small_toy_data.csv", "./data/output.csv", "0.03", "50", "2", "2.5", "true"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],
