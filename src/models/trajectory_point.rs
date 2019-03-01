@@ -13,7 +13,6 @@ pub struct TrajectoryPoint {
   latitude: f64,
   sog: f64,
   cog: f64,
-  pub is_visited: bool,
   pub is_core_point: bool
 }
 
@@ -33,7 +32,6 @@ impl TrajectoryPoint {
       latitude,
       sog,
       cog,
-      is_visited: false,
       is_core_point: false
     }
   }
