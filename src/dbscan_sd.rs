@@ -1,11 +1,15 @@
 use crate::{
   models::{
     cluster::Cluster,
-    trajectory_point::TrajectoryPoint
+    trajectory_point::TrajectoryPoint,
+    merge_indexs::MergeIndexs,
   },
-  dbscan_utility::is_density_reachable
+  dbscan_utility::is_density_reachable,
 };
 use rayon::ThreadPoolBuilder;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::collections::HashSet;
 
 pub fn apply_dbscansd(
   points: &mut Vec<TrajectoryPoint>,
@@ -13,15 +17,15 @@ pub fn apply_dbscansd(
   min_points: i32,
   max_spd: f64,
   max_dir: f64,
-  is_stop_point: bool) -> Vec<Cluster>
+  is_stop_point: bool) -> Box<Vec<Cluster>>
 {
-  let pool = ThreadPoolBuilder::new().num_threads(10).build().unwrap();
+  let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
   let mut result_clusters: Vec<Cluster> = Vec::new();
   let len = points.len();
 
   for i in 0..len {
-    println!("making cluster {}", i);
+    println!("making cluster {} of {}", i, len);
     let point: &TrajectoryPoint = points.get(i).unwrap();
     let iter_of_points = points.iter();
 
@@ -38,6 +42,13 @@ pub fn apply_dbscansd(
     });
 
     if cluster.len() >= (min_points as usize) {
+      // @BUG:
+      // 这里可能导致多线程数据读取不一致
+      // 且这里的 cluster 是改数据之前的，所以导致有问题，后面没有 merge 成功
+      // @TODO
+      // 考虑使用一种新的数据结构来聚合点集
+      // 然后取消点里面的 core 属性，来移植到数据结构中
+      // 例如 hashmap<usize, bool> 
       let point = points.get_mut(i).unwrap();
       point.is_core_point = true;
 
@@ -45,49 +56,53 @@ pub fn apply_dbscansd(
     }
   }
 
-  // 合并簇也比较慢，是否能优化
-  // 理论上也是可以多线程并行的，因为合并是最终结果，与顺序无关
-  // 由于会改变 real_result_clusters 性能提升并不是很大
   let mut real_result_clusters: Vec<Cluster> = Vec::new();
 
-  for (ll, cluster) in result_clusters.iter().enumerate() {
-    println!("merging cluster {}", ll);
+  let merge_indexs = MergeIndexs::new();
+  let merge_indexs = Arc::new(Mutex::new(merge_indexs));
 
-    let iter_of_real_result = real_result_clusters.iter().enumerate();
+  let len = result_clusters.len();
+  for i in 0..len {
+    println!("merging cluster index {} of {}", i, len);
+    let clone_merge_indexs = Arc::clone(&merge_indexs);
 
-    real_result_clusters = pool.install(|| {
-      let mut indexs: Vec<usize> = Vec::new();
-      // 使用空间换时间
-      let mut clusters: Vec<Cluster> = Vec::new();
+    pool.install(|| {
+      let mut can_merge_index: Vec<usize> = Vec::new();
 
-      // 记录所有可以合并的簇索引将它们一起合并
-      for (index, to_cluster) in iter_of_real_result {
-        if is_merge(cluster, to_cluster) {
-          indexs.push(index);
-        } else {
-          clusters.push(
-            Cluster::new(to_cluster.get_cluster().clone())
-          );
-        }
+      let to_cluster = result_clusters.get(i).unwrap();
+      for j in 0..i {
+          let from_cluster = result_clusters.get(j).unwrap();
+          if can_merge(to_cluster, from_cluster) {
+            can_merge_index.push(j);
+          }
       }
 
-      if indexs.len() > 0 {
-        let merged_cluster = merge_clusters(&real_result_clusters, &indexs, cluster);
-        clusters.push(merged_cluster);
+      if can_merge_index.len() == 0 {
+        // 没有可以合并的，就索引对自己
+        clone_merge_indexs.lock().unwrap().push(i)
       } else {
-        clusters.push(
-          Cluster::new(cluster.get_cluster().clone())
-        );
+        // 有可以合并的，就将这些索引都设置为最小值
+        clone_merge_indexs.lock().unwrap().set_to_min(&can_merge_index);
       }
-
-      clusters
     });
   }
 
-  real_result_clusters
+  // 事实证明，合并最需要时间
+  let merge_cluster_indexs = merge_indexs.lock().unwrap().map_indexs();
+  let len = merge_cluster_indexs.len();
+  for (index, merge_cluster_index) in merge_cluster_indexs.iter().enumerate() {
+    println!("merging cluster {} of {}", index, len);
+    let merged_cluster = pool.install(|| {
+      metge_clusters(&result_clusters, &merge_cluster_index)
+    });
+
+    real_result_clusters.push(merged_cluster);
+  }
+
+  Box::new(real_result_clusters)
 }
 
-fn is_merge(c1: &Cluster, c2: &Cluster) -> bool {
+fn can_merge(c1: &Cluster, c2: &Cluster) -> bool {
   let points_c1 = c1.get_cluster();
   let points_c2 = c2.get_cluster();
 
@@ -104,26 +119,18 @@ fn is_merge(c1: &Cluster, c2: &Cluster) -> bool {
   false
 }
 
-fn merge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>, key_cluster: &Cluster) -> Cluster {
-  let mut points: Vec<TrajectoryPoint> = Vec::new();
+fn metge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
+  let mut raw_points: HashSet<TrajectoryPoint> = HashSet::new();
+  let len = indexs.len();
 
-  for index in indexs {
+  for (i, index) in indexs.iter().enumerate() {
+    println!("real merging cluster {} of {}", i, len);
     let cluster = clusters.get(*index).unwrap().get_cluster();
-
     for point in cluster {
-      if !points.contains(point) {
-        points.push(point.clone());
-      }
+      raw_points.insert(point.clone());
     }
   }
 
-  // 合并关键簇
-  for point in key_cluster.get_cluster() {
-    if !points.contains(point) {
-      points.push(point.clone());
-    }
-  }
-
-  let result = Cluster::new(points);
+  let result = Cluster::new(raw_points.into_iter().collect::<Vec<TrajectoryPoint>>());
   result
 }
