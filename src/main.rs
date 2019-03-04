@@ -4,8 +4,8 @@ use dbscansd::{
   dbscan_sd::apply_dbscansd,
   file_io::{
     read_csv_file, 
-    write_cluster_to_file, 
-    write_gv_to_file
+    write_clusters_to_file, 
+    write_gvs_to_file
   },
   gv_extraction::extract_gv,
   models::{
@@ -71,21 +71,16 @@ fn execute_dbscansd(
 ) {
   let mut point_set: PointSet =
     read_csv_file(in_path, is_stop_point).expect("read error file");
-  // @IMPROVE:
-  // 传递结果比较慢，是否能优化
   let clusters: Vec<Cluster> = 
     apply_dbscansd(&mut point_set, eps, min_pts, max_spd, max_dir, is_stop_point);
-  let mut index = 0;
 
-  for cluster in clusters.iter() {
-    if is_stop_point {
-      write_cluster_to_file(out_path, cluster.get_cluster(), index);
-    } else {
-      let ppl: Vec<GravityVector> = extract_gv(&cluster);
-      write_gv_to_file(out_path, &ppl, index);
-      // write_cluster_to_file(out_path, &cluster.get_cluster(), index);
+  if is_stop_point {
+    write_clusters_to_file(out_path, &clusters);
+  } else {
+    let mut gravity_vectors: Vec<Vec<GravityVector>> = Vec::new();
+    for cluster in clusters.iter() {
+      gravity_vectors.push(extract_gv(&cluster));
     }
-
-    index += 1;
+    write_gvs_to_file(out_path, &gravity_vectors);
   }
 }
