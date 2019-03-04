@@ -11,6 +11,10 @@ More details about this algorithm can be found in [1]. The link is as following:
 
 http://ieeexplore.ieee.org/xpls/abs_all.jsp?arnumber=7004281
 
+and a Java implementation for DBSCANSD, the link is as following:
+
+https://github.com/luborliu/DBSCANSD
+
 # Reference
 [1] Liu, Bo, et al. "Knowledge-based clustering of ship trajectories using density-based approach." Big Data (Big Data), 2014 IEEE International Conference on. IEEE, 2014.
 

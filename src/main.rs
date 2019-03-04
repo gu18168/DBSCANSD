@@ -10,8 +10,7 @@ use dbscansd::{
   gv_extraction::extract_gv,
   models::{
     cluster::Cluster, 
-    gravity_vector::GravityVector, 
-    trajectory_point::TrajectoryPoint,
+    gravity_vector::GravityVector,
     point_set::PointSet
   },
 };
@@ -74,13 +73,13 @@ fn execute_dbscansd(
     read_csv_file(in_path, is_stop_point).expect("read error file");
   // @IMPROVE:
   // 传递结果比较慢，是否能优化
-  let clusters: Box<Vec<Cluster>> = 
+  let clusters: Vec<Cluster> = 
     apply_dbscansd(&mut point_set, eps, min_pts, max_spd, max_dir, is_stop_point);
   let mut index = 0;
 
   for cluster in clusters.iter() {
     if is_stop_point {
-      write_cluster_to_file(out_path, &cluster.get_cluster(), index);
+      write_cluster_to_file(out_path, cluster.get_cluster(), index);
     } else {
       let ppl: Vec<GravityVector> = extract_gv(&cluster);
       write_gv_to_file(out_path, &ppl, index);

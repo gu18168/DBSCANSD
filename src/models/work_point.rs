@@ -31,10 +31,11 @@ impl Hash for WorkPoint {
 
 impl WorkPoint {
   // @Clone
-  pub fn new(point: &TrajectoryPoint) -> Self {
+  // 所有权直接转移到 WorkPoint 中，原先的不再需要
+  pub fn new(point: TrajectoryPoint) -> Self {
     Self {
       uuid: Uuid::new_v4(),
-      point: point.clone()
+      point: point
     }
   }
 
