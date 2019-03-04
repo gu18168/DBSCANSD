@@ -3,16 +3,19 @@ use crate::{
     cluster::Cluster,
     trajectory_point::TrajectoryPoint,
     merge_indexs::MergeIndexs,
+    work_point::WorkPoint,
+    point_set::PointSet,
   },
   dbscan_utility::is_density_reachable,
 };
 use rayon::ThreadPoolBuilder;
+use uuid::Uuid;
 use std::sync::Arc;
 use std::sync::Mutex;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 
 pub fn apply_dbscansd(
-  points: &mut Vec<TrajectoryPoint>,
+  points: &Vec<TrajectoryPoint>,
   eps: f64,
   min_points: i32,
   max_spd: f64,
@@ -21,19 +24,21 @@ pub fn apply_dbscansd(
 {
   let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
+  let mut point_set: PointSet = PointSet::new(points);
   let mut result_clusters: Vec<Cluster> = Vec::new();
-  let len = points.len();
+  let mut core_uuids: Vec<Uuid> = Vec::new();
+  let len = point_set.len();
 
   for i in 0..len {
     println!("making cluster {} of {}", i, len);
-    let point: &TrajectoryPoint = points.get(i).unwrap();
-    let iter_of_points = points.iter();
+    let point: &WorkPoint = point_set.get(i);
+    let iter_of_point_set = point_set.iter();
 
     let cluster = pool.install(|| {
-      let mut cluster_raw: Vec<TrajectoryPoint> = Vec::new();
+      let mut cluster_raw: Vec<WorkPoint> = Vec::new();
 
-      for p in iter_of_points {
-        if is_density_reachable(p, point, eps, max_spd, max_dir, is_stop_point) {
+      for p in iter_of_point_set {
+        if is_density_reachable(p.get_point(), point.get_point(), eps, max_spd, max_dir, is_stop_point) {
           cluster_raw.push(p.clone());
         }
       }
@@ -42,18 +47,14 @@ pub fn apply_dbscansd(
     });
 
     if cluster.len() >= (min_points as usize) {
-      // @BUG:
-      // 这里可能导致多线程数据读取不一致
-      // 且这里的 cluster 是改数据之前的，所以导致有问题，后面没有 merge 成功
-      // @TODO
-      // 考虑使用一种新的数据结构来聚合点集
-      // 然后取消点里面的 core 属性，来移植到数据结构中
-      // 例如 hashmap<usize, bool> 
-      let point = points.get_mut(i).unwrap();
-      point.is_core_point = true;
-
+      core_uuids.push(point.get_uuid().clone());
+      
       result_clusters.push(Cluster::new(cluster));
     }
+  }
+
+  for core_uuid in core_uuids {
+    point_set.set_point_core(&core_uuid);
   }
 
   let mut real_result_clusters: Vec<Cluster> = Vec::new();
@@ -72,7 +73,7 @@ pub fn apply_dbscansd(
       let to_cluster = result_clusters.get(i).unwrap();
       for j in 0..i {
           let from_cluster = result_clusters.get(j).unwrap();
-          if can_merge(to_cluster, from_cluster) {
+          if can_merge(to_cluster, from_cluster, point_set.get_core_map()) {
             can_merge_index.push(j);
           }
       }
@@ -102,7 +103,7 @@ pub fn apply_dbscansd(
   Box::new(real_result_clusters)
 }
 
-fn can_merge(c1: &Cluster, c2: &Cluster) -> bool {
+fn can_merge(c1: &Cluster, c2: &Cluster, core_map: &HashMap<Uuid, bool>) -> bool {
   let points_c1 = c1.get_cluster();
   let points_c2 = c2.get_cluster();
 
@@ -111,7 +112,7 @@ fn can_merge(c1: &Cluster, c2: &Cluster) -> bool {
   }
 
   for p in points_c2 {
-    if p.is_core_point && points_c1.contains(p) {
+    if is_point_core(core_map, p.get_uuid()) && points_c1.contains(p) {
       return true;
     }
   }
@@ -119,8 +120,16 @@ fn can_merge(c1: &Cluster, c2: &Cluster) -> bool {
   false
 }
 
+fn is_point_core(core_map: &HashMap<Uuid, bool>, uuid: &Uuid) -> bool {
+  if let Some(val) = core_map.get(uuid) {
+    return *val;
+  }
+
+  false
+}
+
 fn metge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
-  let mut raw_points: HashSet<TrajectoryPoint> = HashSet::new();
+  let mut raw_points: HashSet<WorkPoint> = HashSet::new();
   let len = indexs.len();
 
   for (i, index) in indexs.iter().enumerate() {
@@ -131,6 +140,6 @@ fn metge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
     }
   }
 
-  let result = Cluster::new(raw_points.into_iter().collect::<Vec<TrajectoryPoint>>());
+  let result = Cluster::new(raw_points.into_iter().collect::<Vec<WorkPoint>>());
   result
 }

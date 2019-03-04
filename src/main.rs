@@ -61,12 +61,12 @@ fn execute_dbscansd(
   max_dir: f64,
   is_stop_point: bool,
 ) {
-  let mut points: Vec<TrajectoryPoint> =
+  let points: Vec<TrajectoryPoint> =
     read_csv_file(in_path, is_stop_point).expect("read error file");
   // @IMPROVE:
   // 传递结果比较慢，是否能优化
   let clusters: Box<Vec<Cluster>> = 
-    apply_dbscansd(&mut points, eps, min_pts, max_spd, max_dir, is_stop_point);
+    apply_dbscansd(&points, eps, min_pts, max_spd, max_dir, is_stop_point);
   let mut index = 0;
 
   for cluster in clusters.iter() {

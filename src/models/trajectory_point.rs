@@ -1,13 +1,10 @@
-use std::hash::{Hash, Hasher};
-
 /// # Should Know
 /// * Rust doesn't support field mutability
 /// * Mutability is a property of the binding, not of the struct
 /// 
 /// # Notes
-/// * PartialEq: .contains()
 /// * Clone: .clone() 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 pub struct TrajectoryPoint {
   mmsi: String,
   timestamp: i64,
@@ -16,15 +13,6 @@ pub struct TrajectoryPoint {
   sog: f64,
   cog: f64,
   pub is_core_point: bool
-}
-
-impl Eq for TrajectoryPoint {}
-
-impl Hash for TrajectoryPoint {
-  fn hash<H: Hasher>(&self, state: &mut H) {
-        self.mmsi.hash(state);
-        self.timestamp.hash(state);
-    }
 }
 
 impl TrajectoryPoint {
