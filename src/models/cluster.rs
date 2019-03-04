@@ -1,19 +1,19 @@
 use crate::{
-  models::work_point::WorkPoint
+  models::trajectory_point::TrajectoryPoint
 };
 
 pub struct Cluster{
-  cluster: Vec<WorkPoint>
+  cluster: Vec<TrajectoryPoint>
 }
 
 impl Cluster {
-  pub fn new(cluster: Vec<WorkPoint>) -> Self {
+  pub fn new(cluster: Vec<TrajectoryPoint>) -> Self {
     Self {
       cluster
     }
   }
 
-  pub fn get_cluster(&self) -> &Vec<WorkPoint> {
+  pub fn get_cluster(&self) -> &Vec<TrajectoryPoint> {
     &self.cluster
   }
 
@@ -21,7 +21,7 @@ impl Cluster {
     let mut sum: f64 = 0.0;
 
     for p in self.get_cluster() {
-      sum += p.get_point().get_cog();
+      sum += p.get_cog();
     }
 
     sum / (self.cluster.len() as f64)

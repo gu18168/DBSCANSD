@@ -11,7 +11,7 @@ pub fn extract_gv(cluster: &Cluster) -> Vec<GravityVector> {
   let mut mp_list: Vec<MappingPoint> = Vec::new();
 
   for p in cluster.get_cluster() {
-    let mp: MappingPoint = MappingPoint::map_point(p.get_point(), avg_cog);
+    let mp: MappingPoint = MappingPoint::map_point(p, avg_cog);
     mp_list.push(mp);
   }
 

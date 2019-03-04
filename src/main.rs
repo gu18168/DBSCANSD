@@ -2,9 +2,17 @@ extern crate dbscansd;
 
 use dbscansd::{
   dbscan_sd::apply_dbscansd,
-  file_io::{read_csv_file, write_cluster_to_file, write_gv_to_file},
+  file_io::{
+    read_csv_file, 
+    write_cluster_to_file, 
+    write_gv_to_file
+  },
   gv_extraction::extract_gv,
-  models::{cluster::Cluster, gravity_vector::GravityVector, trajectory_point::TrajectoryPoint},
+  models::{
+    cluster::Cluster, 
+    gravity_vector::GravityVector,
+    point_set::PointSet
+  },
 };
 use std::env;
 
@@ -48,7 +56,7 @@ fn main() {
     println!("  args[5]: maxSpd	 - 3rd parameter of DBSCANSD, the maximum Speeds' difference");
     println!("  args[6]: maxDir	 - 4th parameter of DBSCANSD, the maximum Directions' difference");
     println!("  args[7]: boolean value, if you would like to cluster stopping points (true) or moving points (false)");
-    println!("e.g. cargo run input.csv output.csv 20000 0.03 50 2 2.5 false");
+    println!("e.g. cargo run input.csv output.csv 0.03 50 2 2.5 false");
   }
 }
 
@@ -61,17 +69,17 @@ fn execute_dbscansd(
   max_dir: f64,
   is_stop_point: bool,
 ) {
-  let points: Vec<TrajectoryPoint> =
+  let mut point_set: PointSet =
     read_csv_file(in_path, is_stop_point).expect("read error file");
   // @IMPROVE:
   // 传递结果比较慢，是否能优化
-  let clusters: Box<Vec<Cluster>> = 
-    apply_dbscansd(&points, eps, min_pts, max_spd, max_dir, is_stop_point);
+  let clusters: Vec<Cluster> = 
+    apply_dbscansd(&mut point_set, eps, min_pts, max_spd, max_dir, is_stop_point);
   let mut index = 0;
 
   for cluster in clusters.iter() {
     if is_stop_point {
-      write_cluster_to_file(out_path, &cluster.get_cluster(), index);
+      write_cluster_to_file(out_path, cluster.get_cluster(), index);
     } else {
       let ppl: Vec<GravityVector> = extract_gv(&cluster);
       write_gv_to_file(out_path, &ppl, index);

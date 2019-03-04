@@ -4,14 +4,14 @@ use crate::{
   models::{
     trajectory_point::TrajectoryPoint,
     gravity_vector::GravityVector,
-    work_point::WorkPoint,
+    point_set::PointSet,
   }
 };
 use failure::{Error};
 use chrono::prelude::*;
 use csv::Reader;
 
-pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPoint>, Error> {
+pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<PointSet, Error> {
   let mut rdr = Reader::from_path(path)?;
 
   let mut trajectory_points: Vec<TrajectoryPoint> = Vec::new();
@@ -42,7 +42,7 @@ pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPo
     trajectory_points.push(trajectory_point);
   }
 
-  Ok(trajectory_points)
+  Ok(PointSet::new(trajectory_points))
 }
 
 fn time_to_second(time: &str) -> Result<i64, Error> {
@@ -52,7 +52,7 @@ fn time_to_second(time: &str) -> Result<i64, Error> {
 
 // 存在一个问题，如果是多次写入就完蛋了
 // 但是如果直接覆盖，会使原功能失效
-pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<WorkPoint>, index: i32) {
+pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<TrajectoryPoint>, index: i32) {
   let mut file = OpenOptions::new().append(true).create(true)
     .open(out_path).expect("File doesn't open and write");
 
@@ -61,7 +61,7 @@ pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<WorkPoint>, index: i32) {
       .expect("Write first line error");
   }
 
-  for p in ppl.iter().map(|work_point| { work_point.get_point() }) {
+  for p in ppl {
     let line = index.to_string() + "," + &p.get_longitude().to_string() + "," + &p.get_latitude().to_string() + ","
       + &p.get_sog().to_string() + "," + &p.get_cog().to_string() + "\n";
     file.write_all(line.as_bytes()).expect("File write error");
