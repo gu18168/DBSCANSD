@@ -30,6 +30,7 @@ impl Hash for WorkPoint {
 }
 
 impl WorkPoint {
+  // @Clone
   pub fn new(point: &TrajectoryPoint) -> Self {
     Self {
       uuid: Uuid::new_v4(),

@@ -5,13 +5,14 @@ use crate::{
     trajectory_point::TrajectoryPoint,
     gravity_vector::GravityVector,
     work_point::WorkPoint,
+    point_set::PointSet,
   }
 };
 use failure::{Error};
 use chrono::prelude::*;
 use csv::Reader;
 
-pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPoint>, Error> {
+pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<PointSet, Error> {
   let mut rdr = Reader::from_path(path)?;
 
   let mut trajectory_points: Vec<TrajectoryPoint> = Vec::new();
@@ -42,7 +43,7 @@ pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<Vec<TrajectoryPo
     trajectory_points.push(trajectory_point);
   }
 
-  Ok(trajectory_points)
+  Ok(PointSet::new(&trajectory_points))
 }
 
 fn time_to_second(time: &str) -> Result<i64, Error> {

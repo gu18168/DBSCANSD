@@ -32,6 +32,7 @@ impl PointSet {
   }
 
   pub fn set_point_core(&mut self, uuid: &Uuid) {
+    // @Clone
     self.is_core_map.insert(uuid.clone(), true);
   }
 

@@ -15,7 +15,7 @@ use std::sync::Mutex;
 use std::collections::{HashSet, HashMap};
 
 pub fn apply_dbscansd(
-  points: &Vec<TrajectoryPoint>,
+  point_set: &mut PointSet,
   eps: f64,
   min_points: i32,
   max_spd: f64,
@@ -24,7 +24,6 @@ pub fn apply_dbscansd(
 {
   let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
-  let mut point_set: PointSet = PointSet::new(points);
   let mut result_clusters: Vec<Cluster> = Vec::new();
   let mut core_uuids: Vec<Uuid> = Vec::new();
   let len = point_set.len();
@@ -39,6 +38,7 @@ pub fn apply_dbscansd(
 
       for p in iter_of_point_set {
         if is_density_reachable(p.get_point(), point.get_point(), eps, max_spd, max_dir, is_stop_point) {
+          // @Clone
           cluster_raw.push(p.clone());
         }
       }
@@ -47,6 +47,7 @@ pub fn apply_dbscansd(
     });
 
     if cluster.len() >= (min_points as usize) {
+      // @Clone
       core_uuids.push(point.get_uuid().clone());
       
       result_clusters.push(Cluster::new(cluster));
@@ -136,6 +137,7 @@ fn metge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
     println!("real merging cluster {} of {}", i, len);
     let cluster = clusters.get(*index).unwrap().get_cluster();
     for point in cluster {
+      // @Clone
       raw_points.insert(point.clone());
     }
   }
