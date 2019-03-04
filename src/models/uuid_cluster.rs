@@ -1,17 +1,17 @@
 use uuid::Uuid;
 
-pub struct UuidCluster {
-  uuid_cluster: Vec<Uuid>
+pub struct UuidCluster<'a> {
+  uuid_cluster: Vec<&'a Uuid>
 }
 
-impl UuidCluster {
-  pub fn new(uuid_cluster: Vec<Uuid>) -> Self {
+impl<'a> UuidCluster<'a> {
+  pub fn new(uuid_cluster: Vec<&'a Uuid>) -> Self {
     Self {
       uuid_cluster
     }
   }
 
-  pub fn get_cluster(&self) -> &Vec<Uuid> {
+  pub fn get_cluster(&self) -> &Vec<&Uuid> {
     &self.uuid_cluster
   }
 }

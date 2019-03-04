@@ -12,7 +12,6 @@ use std::slice::Iter;
 
 pub struct PointSet {
   point_set: Vec<WorkPoint>,
-  is_core_map: HashMap<Uuid, bool>,
   uuid_map_index: HashMap<Uuid, usize>
 }
 
@@ -31,19 +30,8 @@ impl PointSet {
 
     Self {
       point_set,
-      is_core_map: HashMap::new(),
       uuid_map_index
     }
-  }
-
-  pub fn get_core_map(&self) -> &HashMap<Uuid, bool> {
-    &self.is_core_map
-  }
-
-  pub fn set_point_core(&mut self, uuid: Uuid) {
-    // @Clone
-    // 直接转移所有权
-    self.is_core_map.insert(uuid, true);
   }
 
   pub fn len(&self) -> usize {

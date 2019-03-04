@@ -25,7 +25,7 @@ pub fn apply_dbscansd(
   let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
   let mut result_uuid_clusters: Vec<UuidCluster> = Vec::new();
-  let mut core_uuids: Vec<Uuid> = Vec::new();
+  let mut core_uuids: HashMap<&Uuid, bool> = HashMap::new();
   let len = point_set.len();
 
   // 采用 UuidCluster 代替原来的 Cluster
@@ -36,13 +36,13 @@ pub fn apply_dbscansd(
     let iter_of_point_set = point_set.iter();
 
     let uuid_cluster = pool.install(|| {
-      let mut uuid_cluster_raw: Vec<Uuid> = Vec::new();
+      let mut uuid_cluster_raw: Vec<&Uuid> = Vec::new();
 
       for p in iter_of_point_set {
         if is_density_reachable(p.get_point(), point.get_point(), eps, max_spd, max_dir, is_stop_point) {
           // @Clone
-          // Uuid Clone
-          uuid_cluster_raw.push(p.get_uuid().clone());
+          // 采用读引用，因为只读不写
+          uuid_cluster_raw.push(p.get_uuid());
         }
       }
 
@@ -51,15 +51,11 @@ pub fn apply_dbscansd(
 
     if uuid_cluster.len() >= (min_points as usize) {
       // @Clone
-      // Uuid Clone
-      core_uuids.push(point.get_uuid().clone());
+      // 采用读引用，因为只读不写
+      core_uuids.insert(point.get_uuid(), true);
       
       result_uuid_clusters.push(UuidCluster::new(uuid_cluster));
     }
-  }
-
-  for core_uuid in core_uuids {
-    point_set.set_point_core(core_uuid);
   }
 
   let mut real_uuid_result_clusters: Vec<UuidCluster> = Vec::new();
@@ -79,7 +75,7 @@ pub fn apply_dbscansd(
       let to_uuid_cluster = result_uuid_clusters.get(i).unwrap();
       for j in 0..i {
           let from_uuid_cluster = result_uuid_clusters.get(j).unwrap();
-          if can_merge(to_uuid_cluster, from_uuid_cluster, point_set.get_core_map()) {
+          if can_merge(to_uuid_cluster, from_uuid_cluster, &core_uuids) {
             can_merge_index.push(j);
           }
       }
@@ -115,7 +111,7 @@ pub fn apply_dbscansd(
   result_clusters
 }
 
-fn can_merge(c1: &UuidCluster, c2: &UuidCluster, core_map: &HashMap<Uuid, bool>) -> bool {
+fn can_merge(c1: &UuidCluster, c2: &UuidCluster, core_map: &HashMap<&Uuid, bool>) -> bool {
   let uuids_c1 = c1.get_cluster();
   let uuids_c2 = c2.get_cluster();
 
@@ -132,7 +128,7 @@ fn can_merge(c1: &UuidCluster, c2: &UuidCluster, core_map: &HashMap<Uuid, bool>)
   false
 }
 
-fn is_point_core(core_map: &HashMap<Uuid, bool>, uuid: &Uuid) -> bool {
+fn is_point_core(core_map: &HashMap<&Uuid, bool>, uuid: &Uuid) -> bool {
   if let Some(val) = core_map.get(uuid) {
     return *val;
   }
@@ -140,8 +136,8 @@ fn is_point_core(core_map: &HashMap<Uuid, bool>, uuid: &Uuid) -> bool {
   false
 }
 
-fn merge_clusters(uuid_clusters: &Vec<UuidCluster>, indexs: &Vec<usize>) -> UuidCluster {
-  let mut raw_uuids: HashSet<Uuid> = HashSet::new();
+fn merge_clusters<'a>(uuid_clusters: &'a Vec<UuidCluster>, indexs: &Vec<usize>) -> UuidCluster<'a> {
+  let mut raw_uuids: HashSet<&Uuid> = HashSet::new();
   let len = indexs.len();
 
   for (i, index) in indexs.iter().enumerate() {
@@ -149,11 +145,11 @@ fn merge_clusters(uuid_clusters: &Vec<UuidCluster>, indexs: &Vec<usize>) -> Uuid
     let uuid_cluster = uuid_clusters.get(*index).unwrap().get_cluster();
     for uuid in uuid_cluster {
       // @Clone
-      // 这里就用 raw_uuids 空间换了时间的效率
-      raw_uuids.insert(uuid.clone());
+      // 采用读引用，因为只读不写
+      raw_uuids.insert(uuid);
     }
   }
 
-  let result = UuidCluster::new(raw_uuids.into_iter().collect::<Vec<Uuid>>());
+  let result = UuidCluster::new(raw_uuids.into_iter().collect::<Vec<&Uuid>>());
   result
 }
