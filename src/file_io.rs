@@ -1,9 +1,10 @@
-use std::fs::{File, OpenOptions};
-use std::io::{BufRead, BufReader, Write};
+use std::fs::OpenOptions;
+use std::io::Write;
 use crate::{
   models::{
     trajectory_point::TrajectoryPoint,
-    gravity_vector::GravityVector
+    gravity_vector::GravityVector,
+    work_point::WorkPoint,
   }
 };
 use failure::{Error};
@@ -49,7 +50,9 @@ fn time_to_second(time: &str) -> Result<i64, Error> {
   Ok(date.timestamp())
 }
 
-pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<TrajectoryPoint>, index: i32) {
+// 存在一个问题，如果是多次写入就完蛋了
+// 但是如果直接覆盖，会使原功能失效
+pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<WorkPoint>, index: i32) {
   let mut file = OpenOptions::new().append(true).create(true)
     .open(out_path).expect("File doesn't open and write");
 
@@ -58,7 +61,7 @@ pub fn write_cluster_to_file(out_path: &str, ppl: &Vec<TrajectoryPoint>, index: 
       .expect("Write first line error");
   }
 
-  for p in ppl {
+  for p in ppl.iter().map(|work_point| { work_point.get_point() }) {
     let line = index.to_string() + "," + &p.get_longitude().to_string() + "," + &p.get_latitude().to_string() + ","
       + &p.get_sog().to_string() + "," + &p.get_cog().to_string() + "\n";
     file.write_all(line.as_bytes()).expect("File write error");

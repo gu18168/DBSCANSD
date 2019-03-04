@@ -1,6 +1,8 @@
 extern crate failure;
 extern crate chrono;
 extern crate csv;
+extern crate rayon;
+extern crate uuid;
 
 pub mod models;
 pub mod file_io;

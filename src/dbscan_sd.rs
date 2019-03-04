@@ -1,122 +1,109 @@
 use crate::{
   models::{
     cluster::Cluster,
-    trajectory_point::TrajectoryPoint
+    trajectory_point::TrajectoryPoint,
+    merge_indexs::MergeIndexs,
+    work_point::WorkPoint,
+    point_set::PointSet,
   },
-  dbscan_utility::is_density_reachable
+  dbscan_utility::is_density_reachable,
 };
+use rayon::ThreadPoolBuilder;
+use uuid::Uuid;
+use std::sync::Arc;
+use std::sync::Mutex;
+use std::collections::{HashSet, HashMap};
 
 pub fn apply_dbscansd(
-  points: &mut Vec<TrajectoryPoint>,
+  points: &Vec<TrajectoryPoint>,
   eps: f64,
   min_points: i32,
   max_spd: f64,
   max_dir: f64,
-  is_stop_point: bool) -> Vec<Cluster>
+  is_stop_point: bool) -> Box<Vec<Cluster>>
 {
-  let mut index = 0;
+  let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
+
+  let mut point_set: PointSet = PointSet::new(points);
   let mut result_clusters: Vec<Cluster> = Vec::new();
-  let len = points.len();
+  let mut core_uuids: Vec<Uuid> = Vec::new();
+  let len = point_set.len();
 
-  while index < len {
-    let mut cluster_raw: Vec<TrajectoryPoint> = Vec::new();
-    let point: &TrajectoryPoint = points.get(index).unwrap();
+  for i in 0..len {
+    println!("making cluster {} of {}", i, len);
+    let point: &WorkPoint = point_set.get(i);
+    let iter_of_point_set = point_set.iter();
 
-    // 这句话是不是没有意义，因为 point 不可能是 is_visited 
-    // is_visited 是在下面被赋值 true 的，所以无意义
-    // 且目前 is_visited 这个标识符就是无意义，按顺序全遍历保证了所有点被遍历到
-    if point.is_visited && index != len - 1 { index += 1; continue };
+    let cluster = pool.install(|| {
+      let mut cluster_raw: Vec<WorkPoint> = Vec::new();
 
-    // count 是否可以由 cluster_raw.len() 代替
-    // 目前 cluster_raw 的逻辑是有相同的点就不放入，但是时间戳不同就不会认为是相同
-    // 所以相同的条件过于苛刻，可以认为都不相同，直接都放入 cluster_raw 中
-    // 然后就可以取代 count 的作用
-    let mut count = 0;
-    // 主要是这一个全遍历然后还得算非常耗时间
-    // 是不是可以考虑多线程来运算？将一个点的聚类分给一个线程来进行
-    // 当全部点跑完之后，再让主合并聚类结果
-    // * 多线程主要的竞争点在于 result_clusters 的共享
-    // * 其他的数据由于只是读，所以很安全
-    for p in points.iter() {
-      if is_density_reachable(p, point, eps, max_spd, max_dir, is_stop_point) {
-        count += 1;
-
-        if !cluster_raw.contains(p) {
-          // clone 的代价感觉还是比较高的，能否用 uuid 来代替整艘船
-          // 然后在输出的时候利用 uuid 得到船真正的信息
+      for p in iter_of_point_set {
+        if is_density_reachable(p.get_point(), point.get_point(), eps, max_spd, max_dir, is_stop_point) {
           cluster_raw.push(p.clone());
         }
       }
+
+      cluster_raw
+    });
+
+    if cluster.len() >= (min_points as usize) {
+      core_uuids.push(point.get_uuid().clone());
+      
+      result_clusters.push(Cluster::new(cluster));
     }
-
-    if count >= min_points {
-      let point = points.get_mut(index).unwrap();
-      point.is_visited = true;
-      point.is_core_point = true;
-
-      result_clusters.push(Cluster::new(cluster_raw));
-    }
-    
-    // 可以移到循环外，因为这一步就是等循环结束了进行
-    // 移到循环外，可以减少判断以及对于 index 的维护
-    if index == (len - 1) {
-      let mut length = result_clusters.len();
-      let mut flag = true;
-      let mut i = 0;
-      let mut j = 0;
-
-      // 感觉非常不优雅，思考一下能不能优化
-      while flag {
-        flag = false;
-
-        while i < length {
-          while j < length {
-            if i != j {
-              if i == length {
-                flag = true;
-                continue;
-              }
-
-              let to_merge = is_merge(
-                result_clusters.get(i).unwrap(), 
-                result_clusters.get(j).unwrap()
-              );
-
-              if to_merge {
-                // 能不能不要在同一个 Vec 进行操作，感觉很危险，虽然使用了 Cow
-                // 思路如下：
-                // 1. 分成两个 Vec ，一个是旧的，一个是新的
-                // 2. 遍历旧的，然后元素与新的比较，若都不能合并就加入到新的末尾
-                // 3. 若能合并，不要直接合并，而是与整个新的比较，获得能合并的索引数组，将这些一起合并成一个
-                // 4. 上述步骤能保证，新 Vec 中的元素不能互相合并
-                let c_bef = result_clusters.get(j).unwrap().get_cluster().clone();
-                for p in c_bef {
-                  let c_aft = result_clusters.get_mut(i).unwrap().get_mut_cluster();
-                  if !c_aft.contains(&p) {
-                    c_aft.push(p.clone());
-                  }
-                }
-                result_clusters.remove(j);
-                j -= 1;
-                length -= 1;
-              }
-            }
-
-            j += 1;
-          }
-          i += 1;
-        }
-      }
-    }
-
-    println!("{}", index);
-    index += 1;
   }
 
-  result_clusters
+  for core_uuid in core_uuids {
+    point_set.set_point_core(&core_uuid);
+  }
+
+  let mut real_result_clusters: Vec<Cluster> = Vec::new();
+
+  let merge_indexs = MergeIndexs::new();
+  let merge_indexs = Arc::new(Mutex::new(merge_indexs));
+
+  let len = result_clusters.len();
+  for i in 0..len {
+    println!("merging cluster index {} of {}", i, len);
+    let clone_merge_indexs = Arc::clone(&merge_indexs);
+
+    pool.install(|| {
+      let mut can_merge_index: Vec<usize> = Vec::new();
+
+      let to_cluster = result_clusters.get(i).unwrap();
+      for j in 0..i {
+          let from_cluster = result_clusters.get(j).unwrap();
+          if can_merge(to_cluster, from_cluster, point_set.get_core_map()) {
+            can_merge_index.push(j);
+          }
+      }
+
+      if can_merge_index.len() == 0 {
+        // 没有可以合并的，就索引对自己
+        clone_merge_indexs.lock().unwrap().push(i)
+      } else {
+        // 有可以合并的，就将这些索引都设置为最小值
+        clone_merge_indexs.lock().unwrap().set_to_min(&can_merge_index);
+      }
+    });
+  }
+
+  // 事实证明，合并最需要时间
+  let merge_cluster_indexs = merge_indexs.lock().unwrap().map_indexs();
+  let len = merge_cluster_indexs.len();
+  for (index, merge_cluster_index) in merge_cluster_indexs.iter().enumerate() {
+    println!("merging cluster {} of {}", index, len);
+    let merged_cluster = pool.install(|| {
+      metge_clusters(&result_clusters, &merge_cluster_index)
+    });
+
+    real_result_clusters.push(merged_cluster);
+  }
+
+  Box::new(real_result_clusters)
 }
 
-fn is_merge(c1: &Cluster, c2: &Cluster) -> bool {
+fn can_merge(c1: &Cluster, c2: &Cluster, core_map: &HashMap<Uuid, bool>) -> bool {
   let points_c1 = c1.get_cluster();
   let points_c2 = c2.get_cluster();
 
@@ -125,10 +112,34 @@ fn is_merge(c1: &Cluster, c2: &Cluster) -> bool {
   }
 
   for p in points_c2 {
-    if p.is_core_point && points_c1.contains(p) {
+    if is_point_core(core_map, p.get_uuid()) && points_c1.contains(p) {
       return true;
     }
   }
 
   false
+}
+
+fn is_point_core(core_map: &HashMap<Uuid, bool>, uuid: &Uuid) -> bool {
+  if let Some(val) = core_map.get(uuid) {
+    return *val;
+  }
+
+  false
+}
+
+fn metge_clusters(clusters: &Vec<Cluster>, indexs: &Vec<usize>) -> Cluster {
+  let mut raw_points: HashSet<WorkPoint> = HashSet::new();
+  let len = indexs.len();
+
+  for (i, index) in indexs.iter().enumerate() {
+    println!("real merging cluster {} of {}", i, len);
+    let cluster = clusters.get(*index).unwrap().get_cluster();
+    for point in cluster {
+      raw_points.insert(point.clone());
+    }
+  }
+
+  let result = Cluster::new(raw_points.into_iter().collect::<Vec<WorkPoint>>());
+  result
 }
