@@ -1,3 +1,6 @@
+//! 簇重心向量，由运动点簇抽象出的结果
+
+/// GV 由运动点簇抽象得到
 pub struct GravityVector {
   median_distance: f64,
   longitude: f64,

@@ -1,3 +1,4 @@
+//! DBSCANSD 算法的 Rust 实现
 extern crate failure;
 extern crate chrono;
 extern crate csv;

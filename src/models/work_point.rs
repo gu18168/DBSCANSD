@@ -1,3 +1,4 @@
+//! 工作点，给每个轨迹点加上 uuid 的结果
 use crate::{
   models::{
     trajectory_point::TrajectoryPoint
@@ -6,10 +7,6 @@ use crate::{
 use uuid::Uuid;
 use std::hash::{Hash, Hasher};
 
-/// # Notes
-/// * PartialEq: .contains()
-/// * Clone: .clone() 
-#[derive(Clone)]
 pub struct WorkPoint {
   uuid: Uuid,
   point: TrajectoryPoint

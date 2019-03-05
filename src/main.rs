@@ -78,7 +78,10 @@ fn execute_dbscansd(
     write_clusters_to_file(out_path, &clusters);
   } else {
     let mut gravity_vectors: Vec<Vec<GravityVector>> = Vec::new();
-    for cluster in clusters.iter() {
+    let len = clusters.len();
+    for (index, cluster) in clusters.iter().enumerate() {
+      println!("extracting gv {} of {}", index, len);
+      
       gravity_vectors.push(extract_gv(&cluster));
     }
     write_gvs_to_file(out_path, &gravity_vectors);

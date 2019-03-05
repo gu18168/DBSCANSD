@@ -1,18 +1,13 @@
-/// # Should Know
-/// * Rust doesn't support field mutability
-/// * Mutability is a property of the binding, not of the struct
-/// 
-/// # Notes
-/// * Clone: .clone() 
-#[derive(Clone)]
+//! 轨迹点，从文件中读取的原始点数据格式
+
+/// 直接根据 csv 文件内容构建。
 pub struct TrajectoryPoint {
   mmsi: String,
   timestamp: i64,
   longitude: f64,
   latitude: f64,
   sog: f64,
-  cog: f64,
-  pub is_core_point: bool
+  cog: f64
 }
 
 impl TrajectoryPoint {
@@ -30,8 +25,7 @@ impl TrajectoryPoint {
       longitude,
       latitude,
       sog,
-      cog,
-      is_core_point: false
+      cog
     }
   }
 

@@ -1,3 +1,8 @@
+//! 执行文件 IO 操作
+//! 
+//! 1. 读取 csv 文件获得船舶轨迹点数据
+//! 2. 将得到的簇信息写入到 csv 文件中
+//! 3. 将得到的运动重心向量写入到 csv 文件中
 use std::fs::OpenOptions;
 use std::io::Write;
 use crate::{
@@ -64,6 +69,10 @@ pub fn read_csv_file(path: &str, is_stop_point: bool) -> Result<PointSet, Error>
   Ok(PointSet::new(trajectory_points))
 }
 
+/// 将指定格式的时间转化为时间戳
+/// 
+/// # Errors
+/// 如果给定的时间格式不符合要求或者时间不真实（例如 2 月 30 日）将会返回错误
 fn time_to_second(time: &str) -> Result<i64, Error> {
   let date = Utc.datetime_from_str(time, "%Y%m%d_%H%M%S")?;
   Ok(date.timestamp())
@@ -79,6 +88,7 @@ pub fn write_clusters_to_file(out_path: &str, ppl: &Vec<Cluster>) {
   let mut file = OpenOptions::new().write(true).create(true)
     .open(out_path).expect("File can't write");
 
+  // 写入 csv 文件首行
   file.write_all(b"clusterIndex,Longitude,Latitude,SOG,COG\n")
     .expect("File can't write");
 
@@ -101,6 +111,7 @@ pub fn write_gvs_to_file(out_path: &str, ppl: &Vec<Vec<GravityVector>>) {
   let mut file = OpenOptions::new().append(true).create(true)
     .open(out_path).expect("File can't write");
 
+  // 写入 csv 文件首行
   file.write_all(b"clusterIndex,Longitude,Latitude,SOG,COG,MedianDistance\n")
     .expect("File can't write");
 

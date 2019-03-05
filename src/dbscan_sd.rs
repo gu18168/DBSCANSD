@@ -1,3 +1,4 @@
+//! DBSCANSD 算法实现
 use crate::{
   models::{
     cluster::Cluster,
@@ -14,6 +15,7 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::collections::{HashSet, HashMap};
 
+/// 执行 DBSCANSD 算法
 pub fn apply_dbscansd(
   point_set: &mut PointSet,
   eps: f64,
@@ -111,6 +113,7 @@ pub fn apply_dbscansd(
   result_clusters
 }
 
+/// 检查两个簇是否能够合并
 fn can_merge(c1: &UuidCluster, c2: &UuidCluster, core_map: &HashMap<&Uuid, bool>) -> bool {
   let uuids_c1 = c1.get_cluster();
   let uuids_c2 = c2.get_cluster();
@@ -128,6 +131,7 @@ fn can_merge(c1: &UuidCluster, c2: &UuidCluster, core_map: &HashMap<&Uuid, bool>
   false
 }
 
+/// 检查一个点是否是核心点
 fn is_point_core(core_map: &HashMap<&Uuid, bool>, uuid: &Uuid) -> bool {
   if let Some(val) = core_map.get(uuid) {
     return *val;
@@ -136,6 +140,7 @@ fn is_point_core(core_map: &HashMap<&Uuid, bool>, uuid: &Uuid) -> bool {
   false
 }
 
+/// 合并两个 Uuid 簇
 fn merge_clusters<'a>(uuid_clusters: &'a Vec<UuidCluster>, indexs: &Vec<usize>) -> UuidCluster<'a> {
   let mut raw_uuids: HashSet<&Uuid> = HashSet::new();
   let len = indexs.len();

@@ -1,3 +1,5 @@
+//! 所需的数据结构
+
 pub mod trajectory_point;
 pub mod gravity_vector;
 pub mod cluster;
