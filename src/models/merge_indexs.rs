@@ -19,6 +19,11 @@ impl MergeIndexs {
     }
   }
 
+  /// 得到指定索引的合并索引
+  pub fn get(&self, index: usize) -> &usize {
+    self.merge_indexs.get(index).unwrap()
+  }
+
   /// 得到指定索引中的最小簇索引
   fn find_min(&self, indexs: &Vec<usize>) -> usize {
     let mut res = <usize>::max_value();

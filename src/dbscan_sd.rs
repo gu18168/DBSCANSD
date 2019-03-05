@@ -11,8 +11,6 @@ use crate::{
 };
 use rayon::ThreadPoolBuilder;
 use uuid::Uuid;
-use std::sync::Arc;
-use std::sync::Mutex;
 use std::collections::HashSet;
 
 /// 执行 DBSCANSD 算法
@@ -62,38 +60,48 @@ pub fn apply_dbscansd(
 
   let mut real_uuid_result_clusters: Vec<UuidCluster> = Vec::new();
 
-  let merge_indexs = MergeIndexs::new();
-  let merge_indexs = Arc::new(Mutex::new(merge_indexs));
+  let mut merge_indexs = MergeIndexs::new();
 
   // 利用 Uuid 进行 merge 即可
   let len = result_uuid_clusters.len();
   for i in 0..len {
     println!("merging cluster index {} of {}", i, len);
-    let clone_merge_indexs = Arc::clone(&merge_indexs);
 
-    pool.install(|| {
+    let to_uuid_cluster = result_uuid_clusters.get(i).unwrap();
+
+    let can_merge_index = pool.install(|| {
       let mut can_merge_index: Vec<usize> = Vec::new();
+      let mut can_merge_map_index: HashSet<&usize> = HashSet::new();
 
-      let to_uuid_cluster = result_uuid_clusters.get(i).unwrap();
       for j in 0..i {
+        let map_index = merge_indexs.get(j);
+
+        // 将已经确定已经能够合并的跳过
+        if can_merge_map_index.contains(map_index) {
+          can_merge_index.push(j);
+        } else {
           let from_uuid_cluster = result_uuid_clusters.get(j).unwrap();
           if can_merge(to_uuid_cluster, from_uuid_cluster, &core_uuids) {
             can_merge_index.push(j);
+            can_merge_map_index.insert(map_index);
           }
+        }
       }
 
-      if can_merge_index.len() == 0 {
-        // 没有可以合并的，就索引对自己
-        clone_merge_indexs.lock().unwrap().push(i)
-      } else {
-        // 有可以合并的，就将这些索引都设置为最小值
-        clone_merge_indexs.lock().unwrap().set_to_min(&can_merge_index);
-      }
+      can_merge_index
     });
+
+    if can_merge_index.len() == 0 {
+      // 没有可以合并的，就索引对自己
+      merge_indexs.push(i)
+    } else {
+      // 有可以合并的，就将这些索引都设置为最小值
+      merge_indexs.set_to_min(&can_merge_index);
+    }
   }
 
   // 事实证明，合并最需要时间
-  let merge_cluster_indexs = merge_indexs.lock().unwrap().map_indexs();
+  let merge_cluster_indexs = merge_indexs.map_indexs();
   let len = merge_cluster_indexs.len();
   for (index, merge_cluster_index) in merge_cluster_indexs.iter().enumerate() {
     println!("merging cluster {} of {}", index, len);
