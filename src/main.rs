@@ -75,8 +75,10 @@ fn execute_dbscansd(
     apply_dbscansd(&mut point_set, eps, min_pts, max_spd, max_dir, is_stop_point);
 
   if is_stop_point {
-    write_clusters_to_file(out_path, &clusters);
+    write_clusters_to_file(&(out_path.to_string() + "_stoping.csv"), &clusters);
   } else {
+    write_clusters_to_file(&(out_path.to_string() + "_moving.csv"), &clusters);
+
     let mut gravity_vectors: Vec<Vec<GravityVector>> = Vec::new();
     let len = clusters.len();
     for (index, cluster) in clusters.iter().enumerate() {
@@ -84,6 +86,6 @@ fn execute_dbscansd(
       
       gravity_vectors.push(extract_gv(&cluster));
     }
-    write_gvs_to_file(out_path, &gravity_vectors);
+    write_gvs_to_file(&(out_path.to_string() + "_gv.csv"), &gravity_vectors);
   }
 }

@@ -32,23 +32,22 @@ pub fn extract_gv(cluster: &Cluster) -> Vec<GravityVector> {
 
   // 由于 count 肯定小于 len 所以我们才敢直接 unwrap
   while count <= mp_list.len() {
-    if count < mp_list.len() {
+    if count < mp_list.len() && 
+      mp_list.get(count).unwrap().get_mappingtude() - mp_list.get(k).unwrap().get_mappingtude() < 0.01
+    {
       let from_point = mp_list.get(count).unwrap();
-      let to_point = mp_list.get(k).unwrap();
 
       // 将足够接近的 MappingPoint 合到一个 GravityVector 中
-      if from_point.get_mappingtude() - to_point.get_mappingtude() < 0.01 {
-        sum_x = sum_x + from_point.get_longitude();
-        sum_y = sum_y + from_point.get_latitude();
-        sum_sog = sum_sog + from_point.get_sog();
-        sum_cog = sum_cog + from_point.get_cog();
+      sum_x = sum_x + from_point.get_longitude();
+      sum_y = sum_y + from_point.get_latitude();
+      sum_sog = sum_sog + from_point.get_sog();
+      sum_cog = sum_cog + from_point.get_cog();
 
-        // @Clone
-        // 只读可以采用读引用，没有必要 Clone
-        tra_point_map.push(from_point);
+      // @Clone
+      // 只读可以采用读引用，没有必要 Clone
+      tra_point_map.push(from_point);
 
-        count += 1;
-      }
+      count += 1;
     } else {
       let x = sum_x / ((count - k) as f64);
       let y = sum_y / ((count - k) as f64);
