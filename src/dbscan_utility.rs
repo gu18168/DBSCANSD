@@ -40,3 +40,21 @@ pub fn is_density_reachable(
 
   false
 }
+
+/// 检查一个点是否能够与一个点集中的某个点密度可达
+pub fn is_density_reachable_of_many(
+  p1s: &Vec<&TrajectoryPoint>, 
+  p2: &TrajectoryPoint,
+  eps: f64,
+  max_spd: f64,
+  max_dir: f64,
+  is_stop_point: bool) -> bool
+{
+  for p1 in p1s {
+    if is_density_reachable(p1, p2, eps, max_spd, max_dir, is_stop_point) {
+      return true;
+    }
+  }
+
+  false
+}

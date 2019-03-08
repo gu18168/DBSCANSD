@@ -7,4 +7,4 @@ pub mod mapping_point;
 pub mod merge_indexs;
 pub mod work_point;
 pub mod point_set;
-pub mod uuid_cluster;
+// pub mod uuid_cluster;

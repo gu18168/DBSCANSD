@@ -33,7 +33,7 @@ fn main() {
     // 其中其他类型需要实现 FromStr trait
     // 得到的结果是 Result ，利用 expect 提取取结果以及报错
     let eps: f64 = args[3].parse().expect("eps isn't a Double!");
-    let min_pts: i32 = args[4].parse().expect("minPts isn't a Number!");
+    let min_pts: usize = args[4].parse().expect("minPts isn't a Number!");
     let max_spd: f64 = args[5].parse().expect("maxSpd isn't a Double!");
     let max_dir: f64 = args[6].parse().expect("maxDir isn't a Double!");
     let is_stop_point: bool = args[7].parse().expect("isStopPoint isn't a Bool!");
@@ -64,7 +64,7 @@ fn execute_dbscansd(
   in_path: &str,
   out_path: &str,
   eps: f64,
-  min_pts: i32,
+  min_pts: usize,
   max_spd: f64,
   max_dir: f64,
   is_stop_point: bool,

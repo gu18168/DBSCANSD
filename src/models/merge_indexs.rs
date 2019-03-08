@@ -9,18 +9,18 @@ use std::collections::HashMap;
 /// 
 /// 由于 index 与 merge_index 都是 usize 属性，所以使用 Vec 即可。
 pub struct MergeIndexs {
-  merge_indexs: Vec<usize>,
+  merge_indexs: HashMap<usize, usize>,
 }
 
 impl MergeIndexs {
   pub fn new() -> Self {
     Self {
-      merge_indexs: Vec::new(),
+      merge_indexs: HashMap::new(),
     }
   }
 
   /// 得到指定索引的合并索引
-  pub fn get(&self, index: usize) -> &usize {
+  pub fn get(&self, index: &usize) -> &usize {
     self.merge_indexs.get(index).unwrap()
   }
 
@@ -28,7 +28,7 @@ impl MergeIndexs {
   fn find_min(&self, indexs: &Vec<usize>) -> usize {
     let mut res = <usize>::max_value();
     for index in indexs {
-      let val = self.merge_indexs.get(*index).unwrap();
+      let val = self.merge_indexs.get(index).unwrap();
       if *val < res {
         res = *val;
       }
@@ -41,16 +41,32 @@ impl MergeIndexs {
   /// # Ex.
   /// 已知: Fn(1) -> 1, Fn(2) -> 2，且簇3 能够与簇1 ，簇2 合并。
   /// 那么 Fn(1) = Fn(2) = Fn(3) = min(Fn(1), Fn(2), Fn(3))。
-  pub fn set_to_min(&mut self, indexs: &Vec<usize>) {
+  pub fn set_to_min(&mut self, indexs: &Vec<usize>, j: usize) {
     let min = self.find_min(indexs);
     for index in indexs {
-      self.merge_indexs[*index] = min;
+      let mut push_x: usize = min;
+      if let Some(x) = self.merge_indexs.get_mut(index) {
+
+        if *x > min {
+          push_x = *x;
+        }
+        
+        *x = min;
+      }
+
+      // 保证可达
+      if push_x > min {
+        if let Some(x) = self.merge_indexs.get_mut(&push_x) {
+          *x = min;
+        }
+      }
     }
-    self.push(min);
+    // 将目前的也设置为 min
+    self.merge_indexs.insert(j, min);
   }
 
   pub fn push(&mut self, val: usize) {
-    self.merge_indexs.push(val);
+    self.merge_indexs.insert(val, val);
   }
 
   /// 将可合并的簇索引都提取出来
@@ -64,15 +80,35 @@ impl MergeIndexs {
     let mut b_to_index: HashMap<usize, usize> = HashMap::new();
     let mut results: Vec<Vec<usize>> = Vec::new();
 
-    for (a, b) in self.merge_indexs.iter().enumerate() {
+    for (a, b) in self.merge_indexs.iter() {
       if let Some(index) = b_to_index.get(b) {
-        results[*index].push(a);
+        results[*index].push(*a);
       } else {
-        results.push(vec![a]);
+        results.push(vec![*a]);
         b_to_index.insert(*b, results.len() - 1);
       }
     }
 
     results
+  }
+
+  pub fn correct_indexs(&mut self) {
+    let mut set_of_a: Vec<usize> = Vec::new();
+    for (a, _) in self.merge_indexs.iter() {
+      set_of_a.push(a.clone());
+    }
+
+    for a in set_of_a {
+      let mut iter_a = a;
+      // 找到最终的 b
+      while let Some(iter_b) = self.merge_indexs.get(&iter_a) {
+        if iter_a == *iter_b { break; }
+        iter_a = *iter_b;
+      }
+
+      if let Some(x) = self.merge_indexs.get_mut(&a) {
+        *x = iter_a;
+      }
+    }
   }
 }

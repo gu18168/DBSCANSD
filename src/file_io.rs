@@ -108,7 +108,7 @@ pub fn write_clusters_to_file(out_path: &str, ppl: &Vec<Cluster>) {
 /// [ErrorKind](https://doc.rust-lang.org/nightly/std/io/enum.ErrorKind.html#variants)
 /// 中的其他问题，将会引发 panic!
 pub fn write_gvs_to_file(out_path: &str, ppl: &Vec<Vec<GravityVector>>) {
-  let mut file = OpenOptions::new().append(true).create(true)
+  let mut file = OpenOptions::new().write(true).create(true)
     .open(out_path).expect("File can't write");
 
   // 写入 csv 文件首行
