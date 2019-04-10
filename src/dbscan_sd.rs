@@ -28,7 +28,6 @@ pub fn apply_dbscansd(
 {
   let pool = ThreadPoolBuilder::new().num_threads(16).build().unwrap();
 
-  
   let len = point_set.len();
 
   let merge_indexs = MergeIndexs::new();

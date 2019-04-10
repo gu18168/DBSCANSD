@@ -33,6 +33,13 @@ impl MergeIndexs {
         res = *val;
       }
     }
+    
+    // 一路找到最小的，防止抢亲现象
+    while let Some(min) = self.merge_indexs.get(&res) {
+      if *min == res { break; }
+      res = *min;
+    }
+
     res
   }
 

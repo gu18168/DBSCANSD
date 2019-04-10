@@ -47,6 +47,17 @@
             "cwd": "${workspaceFolder}",
             "environment": [],
             "externalConsole": true
+        },
+        {
+            "name": "Test",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/cluster_to_gv-5cd55107123fbd79.exe",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": true
         }
     ]
 }
