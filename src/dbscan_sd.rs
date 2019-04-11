@@ -13,6 +13,7 @@ use crate::{
   }
 };
 use rayon::ThreadPoolBuilder;
+use rayon::prelude::*;
 use uuid::Uuid;
 use std::collections::HashSet;
 use std::sync::{Arc, Mutex, RwLock};

@@ -28,16 +28,18 @@ impl MergeIndexs {
   fn find_min(&self, indexs: &Vec<usize>) -> usize {
     let mut res = <usize>::max_value();
     for index in indexs {
-      let val = self.merge_indexs.get(index).unwrap();
-      if *val < res {
-        res = *val;
+      let mut push_a = index;
+      // 一路找到最小的，防止抢亲现象
+      while let Some(val) = self.merge_indexs.get(push_a) {
+        if val == push_a {
+          if *val < res {
+            res = *val;
+          }
+          break;
+        } else {
+          push_a = val;
+        }
       }
-    }
-    
-    // 一路找到最小的，防止抢亲现象
-    while let Some(min) = self.merge_indexs.get(&res) {
-      if *min == res { break; }
-      res = *min;
     }
 
     res
